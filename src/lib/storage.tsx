@@ -8,58 +8,90 @@ import {
   SubmissionMap,
   ClassSettings,
   UserRole,
+  TeacherProfile,
+  AuthState,
 } from "../types";
 import {
   DEFAULT_CLASS_SETTINGS,
-  DEFAULT_STUDENTS,
+  DEFAULT_STUDENTS_M410,
   DEFAULT_SUBJECTS,
-  DEFAULT_TASKS,
+  DEFAULT_TASKS_M410,
+  DEFAULT_TEACHER_PROFILE,
   createInitialSubmissions,
 } from "./defaultData";
+import { parseClassId, getClassLabel } from "./schoolStructure";
 import { triggerConfetti } from "./utils";
 
 const STORAGE_KEYS = {
-  SETTINGS: "bj3_410_settings",
-  STUDENTS: "bj3_410_students",
-  SUBJECTS: "bj3_410_subjects",
-  TASKS: "bj3_410_tasks",
-  SUBMISSIONS: "bj3_410_submissions",
-  ROLE: "bj3_410_role",
-  CURRENT_STUDENT: "bj3_410_current_student",
+  AUTH: "bj3_auth_session",
+  TEACHER_PROFILE: "bj3_teacher_profile",
+  CLASSES_DATA: "bj3_classes_store",
+  SUBJECTS: "bj3_subjects_store",
+  SUBMISSIONS: "bj3_submissions_store",
+  SETTINGS: "bj3_settings_store",
 };
+
+interface ClassStoreItem {
+  students: Student[];
+  tasks: Task[];
+  announcement?: string;
+}
+
+type ClassesStore = Record<string, ClassStoreItem>;
 
 interface TaskTrackerContextType {
   isInitialized: boolean;
   settings: ClassSettings;
-  students: Student[];
-  activeStudents: Student[];
-  subjects: Subject[];
-  tasks: Task[];
-  submissions: SubmissionMap;
-  role: UserRole;
-  setRole: (role: UserRole) => void;
-  currentStudentId: string;
-  setCurrentStudentId: (id: string) => void;
+
+  // Auth State
+  role: UserRole | null;
+  teacherProfile: TeacherProfile | null;
+  selectedClassId: string;
+  selectedStudentId: string | null;
+  currentStudentId: string | null;
   currentStudent: Student | undefined;
 
-  // Task actions
-  addTask: (taskData: Omit<Task, "id" | "createdAt">) => Task;
+  // Current Class Data
+  currentClassLabel: string;
+  students: Student[];
+  activeStudents: Student[];
+  tasks: Task[];
+  hasStudents: boolean;
+  allClassesData: ClassesStore;
+
+  // Subjects
+  subjects: Subject[];
+  submissions: SubmissionMap;
+
+  // Auth Actions
+  loginTeacher: (name: string, email: string, subject: string, teachingClasses: string[]) => void;
+  loginStudent: (classId: string, studentId?: string) => void;
+  switchClass: (classId: string) => void;
+  switchStudent: (studentId: string) => void;
+  logout: () => void;
+
+  // Teacher Classroom Management
+  saveClassStudents: (classId: string, students: Student[]) => void;
+  batchImportStudents: (classId: string, namesListText: string) => void;
+  updateTeacherClasses: (teachingClasses: string[]) => void;
+
+  // Task Actions
+  addTask: (taskData: Omit<Task, "id" | "createdAt">, targetClassId?: string) => Task;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
 
-  // Submission actions
+  // Submission Actions
   toggleSubmission: (taskId: string, studentId: string) => void;
   setSubmissionStatus: (taskId: string, studentId: string, isSubmitted: boolean) => void;
   batchSetSubmissions: (taskId: string, studentIds: string[], isSubmitted: boolean) => void;
 
-  // Helpers
+  // Helper Stats
   getStudentSubmission: (taskId: string, studentId: string) => boolean;
   getTaskSubmissionStats: (taskId: string) => { submitted: number; total: number; percentage: number };
   getStudentStats: (studentId: string) => { total: number; submitted: number; pending: number; overdue: number; percentage: number };
 
-  // Management actions
+  // Settings & Subjects
   updateSettings: (newSettings: Partial<ClassSettings>) => void;
-  updateStudent: (student: Student) => void;
   addSubject: (subject: Omit<Subject, "id">) => void;
   deleteSubject: (subjectId: string) => void;
   resetAllData: () => void;
@@ -71,55 +103,96 @@ const TaskTrackerContext = createContext<TaskTrackerContextType | undefined>(und
 
 export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [settings, setSettings] = useState<ClassSettings>(DEFAULT_CLASS_SETTINGS);
-  const [students, setStudents] = useState<Student[]>(DEFAULT_STUDENTS);
-  const [subjects, setSubjects] = useState<Subject[]>(DEFAULT_SUBJECTS);
-  const [tasks, setTasks] = useState<Task[]>(DEFAULT_TASKS);
-  const [submissions, setSubmissions] = useState<SubmissionMap>({});
-  const [role, setRoleState] = useState<UserRole>("student");
-  const [currentStudentId, setCurrentStudentIdState] = useState<string>("s-1");
 
-  // Load initial data from localStorage
+  // Settings
+  const [settings, setSettings] = useState<ClassSettings>(DEFAULT_CLASS_SETTINGS);
+
+  // Auth
+  const [role, setRole] = useState<UserRole | null>("student");
+  const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(DEFAULT_TEACHER_PROFILE);
+  const [selectedClassId, setSelectedClassId] = useState<string>("m4-10");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>("s-1");
+
+  // Classes Store
+  const [classesStore, setClassesStore] = useState<ClassesStore>({
+    "m4-10": {
+      students: DEFAULT_STUDENTS_M410,
+      tasks: DEFAULT_TASKS_M410,
+    },
+  });
+
+  // Subjects & Submissions
+  const [subjects, setSubjects] = useState<Subject[]>(DEFAULT_SUBJECTS);
+  const [submissions, setSubmissions] = useState<SubmissionMap>({});
+
+  // Initialize from LocalStorage
   useEffect(() => {
     try {
-      const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      if (savedSettings) setSettings(JSON.parse(savedSettings));
+      // 1. Saved Teacher Profile
+      const savedTeacher = localStorage.getItem(STORAGE_KEYS.TEACHER_PROFILE);
+      if (savedTeacher) {
+        setTeacherProfile(JSON.parse(savedTeacher));
+      } else {
+        localStorage.setItem(STORAGE_KEYS.TEACHER_PROFILE, JSON.stringify(DEFAULT_TEACHER_PROFILE));
+      }
 
-      const savedStudents = localStorage.getItem(STORAGE_KEYS.STUDENTS);
-      const loadedStudents: Student[] = savedStudents ? JSON.parse(savedStudents) : DEFAULT_STUDENTS;
-      setStudents(loadedStudents);
+      // 2. Saved Classes Store
+      const savedClasses = localStorage.getItem(STORAGE_KEYS.CLASSES_DATA);
+      let initialClasses: ClassesStore = {
+        "m4-10": {
+          students: DEFAULT_STUDENTS_M410,
+          tasks: DEFAULT_TASKS_M410,
+        },
+      };
+      if (savedClasses) {
+        try {
+          const parsed = JSON.parse(savedClasses);
+          // Ensure m4-10 exists with data if empty
+          if (!parsed["m4-10"] || !parsed["m4-10"].students || parsed["m4-10"].students.length === 0) {
+            parsed["m4-10"] = {
+              students: DEFAULT_STUDENTS_M410,
+              tasks: DEFAULT_TASKS_M410,
+            };
+          }
+          initialClasses = parsed;
+        } catch {
+          // fallback to initialClasses
+        }
+      }
+      setClassesStore(initialClasses);
+      localStorage.setItem(STORAGE_KEYS.CLASSES_DATA, JSON.stringify(initialClasses));
 
+      // 3. Saved Auth Session
+      const savedAuth = localStorage.getItem(STORAGE_KEYS.AUTH);
+      if (savedAuth) {
+        const parsedAuth: AuthState = JSON.parse(savedAuth);
+        setRole(parsedAuth.role || "student");
+        setSelectedClassId(parsedAuth.selectedClassId || "m4-10");
+        setSelectedStudentId(parsedAuth.selectedStudentId || "s-1");
+      }
+
+      // 4. Saved Subjects
       const savedSubjects = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
       if (savedSubjects) setSubjects(JSON.parse(savedSubjects));
 
-      const savedTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
-      const loadedTasks: Task[] = savedTasks ? JSON.parse(savedTasks) : DEFAULT_TASKS;
-      setTasks(loadedTasks);
-
-      const savedSubmissions = localStorage.getItem(STORAGE_KEYS.SUBMISSIONS);
-      if (savedSubmissions) {
-        setSubmissions(JSON.parse(savedSubmissions));
+      // 5. Saved Submissions
+      const savedSubs = localStorage.getItem(STORAGE_KEYS.SUBMISSIONS);
+      if (savedSubs) {
+        setSubmissions(JSON.parse(savedSubs));
       } else {
-        const initialSubs = createInitialSubmissions(loadedTasks, loadedStudents);
+        const initialSubs = createInitialSubmissions(
+          initialClasses["m4-10"].tasks,
+          initialClasses["m4-10"].students
+        );
         setSubmissions(initialSubs);
         localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(initialSubs));
       }
 
-      const savedRole = localStorage.getItem(STORAGE_KEYS.ROLE);
-      if (savedRole === "teacher" || savedRole === "student") {
-        setRoleState(savedRole);
-      }
-
-      const savedStudentId = localStorage.getItem(STORAGE_KEYS.CURRENT_STUDENT);
-      if (savedStudentId && loadedStudents.some(s => s.id === savedStudentId)) {
-        setCurrentStudentIdState(savedStudentId);
-      } else {
-        // Find first active student
-        const firstActive = loadedStudents.find(s => s.status === "active");
-        if (firstActive) setCurrentStudentIdState(firstActive.id);
-      }
-    } catch (err) {
-      console.error("Failed to load task tracker data from storage", err);
+      // 6. Settings
+      const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (savedSettings) setSettings(JSON.parse(savedSettings));
+    } catch (e) {
+      console.error("Failed to initialize storage", e);
     } finally {
       setIsInitialized(true);
     }
@@ -129,91 +202,210 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     if (!isInitialized) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+      localStorage.setItem(STORAGE_KEYS.CLASSES_DATA, JSON.stringify(classesStore));
     } catch (e) {
-      console.error("Failed to save settings", e);
+      console.error(e);
     }
-  }, [settings, isInitialized]);
+  }, [classesStore, isInitialized]);
 
   useEffect(() => {
     if (!isInitialized) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
+      const authState: AuthState = {
+        role,
+        teacherProfile,
+        selectedClassId,
+        selectedStudentId,
+      };
+      localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(authState));
     } catch (e) {
-      console.error("Failed to save students", e);
+      console.error(e);
     }
-  }, [students, isInitialized]);
-
-  useEffect(() => {
-    if (!isInitialized) return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
-    } catch (e) {
-      console.error("Failed to save subjects", e);
-    }
-  }, [subjects, isInitialized]);
-
-  useEffect(() => {
-    if (!isInitialized) return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
-    } catch (e) {
-      console.error("Failed to save tasks", e);
-    }
-  }, [tasks, isInitialized]);
+  }, [role, teacherProfile, selectedClassId, selectedStudentId, isInitialized]);
 
   useEffect(() => {
     if (!isInitialized) return;
     try {
       localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(submissions));
     } catch (e) {
-      console.error("Failed to save submissions", e);
+      console.error(e);
     }
   }, [submissions, isInitialized]);
 
-  const setRole = (newRole: UserRole) => {
-    setRoleState(newRole);
+  useEffect(() => {
+    if (!isInitialized) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.ROLE, newRole);
+      localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [subjects, isInitialized]);
 
-  const setCurrentStudentId = (id: string) => {
-    setCurrentStudentIdState(id);
+  useEffect(() => {
+    if (!isInitialized) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_STUDENT, id);
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [settings, isInitialized]);
+
+  // Derived current class data
+  const currentClassData = useMemo<ClassStoreItem>(() => {
+    return classesStore[selectedClassId] || { students: [], tasks: [] };
+  }, [classesStore, selectedClassId]);
+
+  const students = useMemo(() => currentClassData.students || [], [currentClassData]);
+  const tasks = useMemo(() => currentClassData.tasks || [], [currentClassData]);
+  const hasStudents = students.length > 0;
 
   const activeStudents = useMemo(() => {
-    return students.filter(s => s.status === "active");
+    return students.filter((s) => s.status === "active");
   }, [students]);
 
   const currentStudent = useMemo(() => {
-    return students.find(s => s.id === currentStudentId) || activeStudents[0];
-  }, [students, currentStudentId, activeStudents]);
+    return students.find((s) => s.id === selectedStudentId) || activeStudents[0];
+  }, [students, selectedStudentId, activeStudents]);
 
-  // Actions
-  const addTask = (taskData: Omit<Task, "id" | "createdAt">): Task => {
+  const currentClassLabel = useMemo(() => {
+    return getClassLabel(selectedClassId);
+  }, [selectedClassId]);
+
+  // Auth actions
+  const loginTeacher = (
+    name: string,
+    email: string,
+    subject: string,
+    teachingClasses: string[]
+  ) => {
+    const profile: TeacherProfile = {
+      id: `teacher-${Date.now()}`,
+      name: name.trim(),
+      email: email.trim(),
+      subject: subject.trim(),
+      teachingClasses: teachingClasses.length > 0 ? teachingClasses : ["m4-10"],
+    };
+
+    setTeacherProfile(profile);
+    setRole("teacher");
+    setSelectedClassId(profile.teachingClasses[0] || "m4-10");
+
+    localStorage.setItem(STORAGE_KEYS.TEACHER_PROFILE, JSON.stringify(profile));
+  };
+
+  const loginStudent = (classId: string, studentId?: string) => {
+    setRole("student");
+    setSelectedClassId(classId);
+
+    const targetStudents = classesStore[classId]?.students || [];
+    const active = targetStudents.filter((s) => s.status === "active");
+
+    if (studentId && targetStudents.some((s) => s.id === studentId)) {
+      setSelectedStudentId(studentId);
+    } else if (active.length > 0) {
+      setSelectedStudentId(active[0].id);
+    } else {
+      setSelectedStudentId(null);
+    }
+  };
+
+  const switchClass = (classId: string) => {
+    setSelectedClassId(classId);
+    const targetStudents = classesStore[classId]?.students || [];
+    const active = targetStudents.filter((s) => s.status === "active");
+    if (active.length > 0) {
+      setSelectedStudentId(active[0].id);
+    } else {
+      setSelectedStudentId(null);
+    }
+  };
+
+  const switchStudent = (studentId: string) => {
+    setSelectedStudentId(studentId);
+  };
+
+  const logout = () => {
+    setRole(null);
+    setSelectedStudentId(null);
+  };
+
+  // Classroom Management by Teacher
+  const saveClassStudents = (classId: string, newStudents: Student[]) => {
+    setClassesStore((prev) => {
+      const existing = prev[classId] || { students: [], tasks: [] };
+      return {
+        ...prev,
+        [classId]: {
+          ...existing,
+          students: newStudents,
+        },
+      };
+    });
+  };
+
+  // Batch paste/import student names (e.g. 1 per line)
+  const batchImportStudents = (classId: string, namesListText: string) => {
+    const lines = namesListText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    let seat = 1;
+    const imported: Student[] = lines.map((line) => {
+      // Strip leading number if user pasted "1. นาย..." or "1 นาย..."
+      const cleaned = line.replace(/^\d+[\.\s\-\)]+\s*/, "").trim();
+      const currentSeat = seat++;
+      return {
+        id: `s-${classId}-${currentSeat}-${Date.now()}`,
+        seatNumber: currentSeat,
+        name: cleaned,
+        status: "active",
+      };
+    });
+
+    saveClassStudents(classId, imported);
+  };
+
+  const updateTeacherClasses = (teachingClasses: string[]) => {
+    if (!teacherProfile) return;
+    const updated: TeacherProfile = {
+      ...teacherProfile,
+      teachingClasses,
+    };
+    setTeacherProfile(updated);
+    localStorage.setItem(STORAGE_KEYS.TEACHER_PROFILE, JSON.stringify(updated));
+  };
+
+  // Task Actions
+  const addTask = (
+    taskData: Omit<Task, "id" | "createdAt">,
+    targetClassId?: string
+  ): Task => {
+    const target = targetClassId || selectedClassId;
     const newTask: Task = {
       ...taskData,
       id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      classId: target,
       createdAt: new Date().toISOString().split("T")[0],
     };
 
-    setTasks(prev => [newTask, ...prev]);
+    setClassesStore((prev) => {
+      const room = prev[target] || { students: [], tasks: [] };
+      return {
+        ...prev,
+        [target]: {
+          ...room,
+          tasks: [newTask, ...room.tasks],
+        },
+      };
+    });
 
-    // Initialize submissions map for this new task
-    setSubmissions(prev => {
+    // Initialize submission map for this task
+    setSubmissions((prev) => {
+      const roomStudents = classesStore[target]?.students || [];
       const taskSubs: Record<string, { isSubmitted: boolean }> = {};
-      students.forEach(s => {
-        if (s.status === "active") {
-          taskSubs[s.id] = { isSubmitted: false };
-        }
+      roomStudents.forEach((s) => {
+        if (s.status === "active") taskSubs[s.id] = { isSubmitted: false };
       });
       return { ...prev, [newTask.id]: taskSubs };
     });
@@ -222,24 +414,46 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const updateTask = (updatedTask: Task) => {
-    setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    setClassesStore((prev) => {
+      const target = updatedTask.classId || selectedClassId;
+      const room = prev[target] || { students: [], tasks: [] };
+      return {
+        ...prev,
+        [target]: {
+          ...room,
+          tasks: room.tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+        },
+      };
+    });
   };
 
   const deleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
-    setSubmissions(prev => {
+    setClassesStore((prev) => {
+      const target = selectedClassId;
+      const room = prev[target] || { students: [], tasks: [] };
+      return {
+        ...prev,
+        [target]: {
+          ...room,
+          tasks: room.tasks.filter((t) => t.id !== taskId),
+        },
+      };
+    });
+
+    setSubmissions((prev) => {
       const next = { ...prev };
       delete next[taskId];
       return next;
     });
   };
 
+  // Submission actions
   const getStudentSubmission = (taskId: string, studentId: string): boolean => {
     return !!submissions[taskId]?.[studentId]?.isSubmitted;
   };
 
   const setSubmissionStatus = (taskId: string, studentId: string, isSubmitted: boolean) => {
-    setSubmissions(prev => {
+    setSubmissions((prev) => {
       const taskSubs = prev[taskId] ? { ...prev[taskId] } : {};
       taskSubs[studentId] = {
         isSubmitted,
@@ -259,9 +473,9 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const batchSetSubmissions = (taskId: string, studentIds: string[], isSubmitted: boolean) => {
-    setSubmissions(prev => {
+    setSubmissions((prev) => {
       const taskSubs = prev[taskId] ? { ...prev[taskId] } : {};
-      studentIds.forEach(sid => {
+      studentIds.forEach((sid) => {
         taskSubs[sid] = {
           isSubmitted,
           submittedAt: isSubmitted ? new Date().toISOString() : undefined,
@@ -278,10 +492,8 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const getTaskSubmissionStats = (taskId: string) => {
     const total = activeStudents.length;
     let submitted = 0;
-    activeStudents.forEach(s => {
-      if (submissions[taskId]?.[s.id]?.isSubmitted) {
-        submitted++;
-      }
+    activeStudents.forEach((s) => {
+      if (submissions[taskId]?.[s.id]?.isSubmitted) submitted++;
     });
     const percentage = total > 0 ? Math.round((submitted / total) * 100) : 0;
     return { submitted, total, percentage };
@@ -295,7 +507,7 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
     let overdue = 0;
     let pending = 0;
 
-    tasks.forEach(task => {
+    tasks.forEach((task) => {
       const isDone = !!submissions[task.id]?.[studentId]?.isSubmitted;
       if (isDone) {
         submitted++;
@@ -303,9 +515,7 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
         pending++;
         const [y, m, d] = task.dueDate.split("-").map(Number);
         const due = new Date(y, m - 1, d);
-        if (now.getTime() > due.getTime()) {
-          overdue++;
-        }
+        if (now.getTime() > due.getTime()) overdue++;
       }
     });
 
@@ -315,11 +525,7 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const updateSettings = (newSettings: Partial<ClassSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-  };
-
-  const updateStudent = (updatedStudent: Student) => {
-    setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
+    setSettings((prev) => ({ ...prev, ...newSettings }));
   };
 
   const addSubject = (subjectData: Omit<Subject, "id">) => {
@@ -327,41 +533,42 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       ...subjectData,
       id: `sub-${Date.now()}`,
     };
-    setSubjects(prev => [...prev, newSubject]);
+    setSubjects((prev) => [...prev, newSubject]);
   };
 
   const deleteSubject = (subjectId: string) => {
-    setSubjects(prev => prev.filter(s => s.id !== subjectId));
+    setSubjects((prev) => prev.filter((s) => s.id !== subjectId));
   };
 
   const resetAllData = () => {
-    setSettings(DEFAULT_CLASS_SETTINGS);
-    setStudents(DEFAULT_STUDENTS);
+    const initialClasses: ClassesStore = {
+      "m4-10": {
+        students: DEFAULT_STUDENTS_M410,
+        tasks: DEFAULT_TASKS_M410,
+      },
+    };
+    setClassesStore(initialClasses);
+    setTeacherProfile(DEFAULT_TEACHER_PROFILE);
     setSubjects(DEFAULT_SUBJECTS);
-    setTasks(DEFAULT_TASKS);
-    const initialSubs = createInitialSubmissions(DEFAULT_TASKS, DEFAULT_STUDENTS);
+    setSettings(DEFAULT_CLASS_SETTINGS);
+    const initialSubs = createInitialSubmissions(DEFAULT_TASKS_M410, DEFAULT_STUDENTS_M410);
     setSubmissions(initialSubs);
-    setRoleState("student");
-    setCurrentStudentIdState("s-1");
+    setRole("student");
+    setSelectedClassId("m4-10");
+    setSelectedStudentId("s-1");
 
-    localStorage.removeItem(STORAGE_KEYS.SETTINGS);
-    localStorage.removeItem(STORAGE_KEYS.STUDENTS);
-    localStorage.removeItem(STORAGE_KEYS.SUBJECTS);
-    localStorage.removeItem(STORAGE_KEYS.TASKS);
-    localStorage.removeItem(STORAGE_KEYS.SUBMISSIONS);
-    localStorage.removeItem(STORAGE_KEYS.ROLE);
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_STUDENT);
+    localStorage.clear();
   };
 
   const exportData = (): string => {
     const exportObj = {
-      version: "1.0",
+      version: "2.0",
       exportDate: new Date().toISOString(),
-      settings,
-      students,
+      classesStore,
+      teacherProfile,
       subjects,
-      tasks,
       submissions,
+      settings,
     };
     return JSON.stringify(exportObj, null, 2);
   };
@@ -369,17 +576,16 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const importData = (jsonStr: string): boolean => {
     try {
       const data = JSON.parse(jsonStr);
-      if (data.settings && data.students && data.tasks) {
-        setSettings(data.settings);
-        setStudents(data.students);
+      if (data.classesStore || data.students) {
+        if (data.classesStore) setClassesStore(data.classesStore);
+        if (data.teacherProfile) setTeacherProfile(data.teacherProfile);
         if (data.subjects) setSubjects(data.subjects);
-        setTasks(data.tasks);
         if (data.submissions) setSubmissions(data.submissions);
+        if (data.settings) setSettings(data.settings);
         return true;
       }
       return false;
-    } catch (e) {
-      console.error("Failed to import data", e);
+    } catch {
       return false;
     }
   };
@@ -389,16 +595,28 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       value={{
         isInitialized,
         settings,
+        role,
+        teacherProfile,
+        selectedClassId,
+        selectedStudentId,
+        currentStudentId: selectedStudentId,
+        currentStudent,
+        currentClassLabel,
         students,
         activeStudents,
-        subjects,
         tasks,
+        hasStudents,
+        allClassesData: classesStore,
+        subjects,
         submissions,
-        role,
-        setRole,
-        currentStudentId,
-        setCurrentStudentId,
-        currentStudent,
+        loginTeacher,
+        loginStudent,
+        switchClass,
+        switchStudent,
+        logout,
+        saveClassStudents,
+        batchImportStudents,
+        updateTeacherClasses,
         addTask,
         updateTask,
         deleteTask,
@@ -409,7 +627,6 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
         getTaskSubmissionStats,
         getStudentStats,
         updateSettings,
-        updateStudent,
         addSubject,
         deleteSubject,
         resetAllData,

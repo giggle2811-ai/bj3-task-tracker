@@ -7,6 +7,7 @@ import { StatCards } from "@/components/dashboard/StatCards";
 import { UrgentTasks } from "@/components/dashboard/UrgentTasks";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskFormModal } from "@/components/tasks/TaskFormModal";
+import { EmptyClassroom } from "@/components/shared/EmptyClassroom";
 import {
   BookOpen,
   Plus,
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const {
     role,
     settings,
+    currentClassLabel,
+    hasStudents,
     tasks,
     subjects,
     activeStudents,
@@ -36,10 +39,13 @@ export default function DashboardPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
-  // Recent tasks
-  const recentTasks = React.useMemo(() => {
-    return tasks.slice(0, 4);
-  }, [tasks]);
+  // If the room has no students registered, show the EmptyClassroom state as requested!
+  if (!hasStudents && role === "student") {
+    return <EmptyClassroom />;
+  }
+
+  // Recent tasks for this class
+  const recentTasks = tasks.slice(0, 4);
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-fade-in">
@@ -51,7 +57,7 @@ export default function DashboardPage() {
         <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm text-amber-900 flex items-start gap-2.5 shadow-xs">
           <Bell className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-bold mr-1.5">ประกาศประจำห้อง:</span>
+            <span className="font-bold mr-1.5">ประกาศประจำห้อง {currentClassLabel}:</span>
             <span>{settings.announcement}</span>
           </div>
         </div>
@@ -72,10 +78,10 @@ export default function DashboardPage() {
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                งานแยกตามรายวิชา
+                งานแยกตามรายวิชา ({currentClassLabel})
               </h2>
               <p className="text-xs text-slate-500">
-                สรุปจำนวนงานของแต่ละวิชาในห้อง {settings.gradeLevel}/{settings.roomNumber}
+                สรุปจำนวนงานของแต่ละวิชาที่สั่งเข้ามาในห้องนี้
               </p>
             </div>
           </div>
@@ -128,7 +134,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-bold text-slate-900">
-              งานล่าสุดทั้งหมด ({tasks.length})
+              งานล่าสุดทั้งหมดในห้อง {currentClassLabel} ({tasks.length})
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -141,7 +147,7 @@ export default function DashboardPage() {
                 className="text-xs px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1 transition-colors shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มงาน</span>
+                <span>สั่งงานให้ห้องนี้</span>
               </button>
             )}
             <Link
@@ -154,19 +160,29 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-          {recentTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onEdit={(t) => {
-                setTaskToEdit(t);
-                setIsTaskModalOpen(true);
-              }}
-              onDelete={deleteTask}
-            />
-          ))}
-        </div>
+        {recentTasks.length === 0 ? (
+          <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-slate-200">
+            <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm font-bold text-slate-700">ยังไม่มีงานที่สั่งในห้องนี้</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {role === "teacher" ? "กดปุ่มสั่งงานเพื่อเพิ่มงานใหม่ให้ห้องนี้" : "เมื่ออาจารย์สั่งงานจะปรากฏขึ้นที่นี่"}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            {recentTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onEdit={(t) => {
+                  setTaskToEdit(t);
+                  setIsTaskModalOpen(true);
+                }}
+                onDelete={deleteTask}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {isTaskModalOpen && (

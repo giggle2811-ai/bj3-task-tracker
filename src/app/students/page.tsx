@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useTaskTracker } from "@/lib/storage";
 import { Student } from "@/types";
 import { StudentDetailModal } from "@/components/students/StudentDetailModal";
+import { EmptyClassroom } from "@/components/shared/EmptyClassroom";
 import {
   Users,
   Search,
@@ -13,31 +14,37 @@ import {
   Award,
   ChevronRight,
   Sparkles,
-  ExternalLink,
+  School,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function StudentsPage() {
   const {
     students,
     activeStudents,
+    currentClassLabel,
+    hasStudents,
     settings,
     getStudentStats,
-    setCurrentStudentId,
+    switchStudent,
     currentStudentId,
-    setRole,
+    role,
   } = useTaskTracker();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
+  // If the room has no students registered, show EmptyClassroom component
+  if (!hasStudents) {
+    return <EmptyClassroom />;
+  }
+
   // Filter students
-  const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
-      const matchName = s.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchSeat = s.seatNumber.toString().includes(searchQuery);
-      return matchName || matchSeat;
-    });
-  }, [students, searchQuery]);
+  const filteredStudents = students.filter((s) => {
+    const matchName = s.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSeat = s.seatNumber.toString().includes(searchQuery);
+    return matchName || matchSeat;
+  });
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fade-in">
@@ -49,16 +56,26 @@ export default function StudentsPage() {
               <Users className="w-4 h-4" />
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              รายชื่อนักเรียนชั้น {settings.gradeLevel}/{settings.roomNumber}
+              รายชื่อนักเรียนห้อง {currentClassLabel}
             </h1>
             <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
-              {activeStudents.length} คน (30 เลขที่)
+              {students.length} คน
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
-            {settings.schoolName} • คลิกที่รายชื่อนักเรียนเพื่อดูงานค้างทั้งหมดและประวัติการส่งงาน
+            {settings.schoolName} • คลิกที่รายชื่อนักเรียนเพื่อดูงานค้างและการส่งงาน
           </p>
         </div>
+
+        {role === "teacher" && (
+          <Link
+            href="/teacher"
+            className="text-xs px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 font-bold border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <span>จัดการ/เพิ่มรายชื่อห้องนี้</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -182,12 +199,11 @@ export default function StudentsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setCurrentStudentId(student.id);
-                        setRole("student");
+                        switchStudent(student.id);
                       }}
                       className="text-blue-600 hover:text-blue-800 font-semibold hover:underline"
                     >
-                      สลับเป็นคนนี้
+                      เลือกเป็นชื่อฉัน
                     </button>
                     <span className="text-slate-500 flex items-center gap-1 font-medium">
                       <span>ดูงานค้าง</span>
@@ -196,7 +212,7 @@ export default function StudentsPage() {
                   </>
                 ) : (
                   <span className="text-slate-400 text-xs italic">
-                    เลขที่ 16 ไม่ขยับเลขที่ถัดไป
+                    ลาออกแล้ว
                   </span>
                 )}
               </div>

@@ -4,18 +4,16 @@ import React, { useState, useMemo } from "react";
 import { useTaskTracker } from "@/lib/storage";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskFormModal } from "@/components/tasks/TaskFormModal";
+import { EmptyClassroom } from "@/components/shared/EmptyClassroom";
 import { Task } from "@/types";
 import {
   Search,
-  Filter,
   Plus,
   ArrowUpDown,
   BookOpen,
-  Calendar,
-  CheckCircle2,
   Clock,
-  AlertTriangle,
   Sparkles,
+  School,
 } from "lucide-react";
 import { isOverdue, isDueSoon } from "@/lib/utils";
 
@@ -25,6 +23,8 @@ export default function TasksPage() {
     tasks,
     subjects,
     currentStudent,
+    currentClassLabel,
+    hasStudents,
     getStudentSubmission,
     deleteTask,
     getTaskSubmissionStats,
@@ -40,66 +40,59 @@ export default function TasksPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
+  // If the room has no students, show EmptyClassroom component
+  if (!hasStudents && role === "student") {
+    return <EmptyClassroom />;
+  }
+
   // Filter and sort tasks
-  const filteredTasks = useMemo(() => {
-    return tasks
-      .filter((task) => {
-        // Search query
-        const matchQuery =
-          task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.subjectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description.toLowerCase().includes(searchQuery.toLowerCase());
-        if (!matchQuery) return false;
+  const filteredTasks = tasks
+    .filter((task) => {
+      // Search query
+      const matchQuery =
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.subjectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.description.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchQuery) return false;
 
-        // Subject filter
-        if (selectedSubject !== "all" && task.subjectId !== selectedSubject) {
-          return false;
-        }
+      // Subject filter
+      if (selectedSubject !== "all" && task.subjectId !== selectedSubject) {
+        return false;
+      }
 
-        // Status filter
-        if (role === "student" && currentStudent) {
-          const isDone = getStudentSubmission(task.id, currentStudent.id);
-          const overdue = !isDone && isOverdue(task.dueDate, task.dueTime);
-          const dueSoon = !isDone && isDueSoon(task.dueDate);
+      // Status filter
+      if (role === "student" && currentStudent) {
+        const isDone = getStudentSubmission(task.id, currentStudent.id);
+        const overdue = !isDone && isOverdue(task.dueDate, task.dueTime);
+        const dueSoon = !isDone && isDueSoon(task.dueDate);
 
-          if (selectedStatus === "pending") return !isDone;
-          if (selectedStatus === "submitted") return isDone;
-          if (selectedStatus === "overdue") return overdue;
-          if (selectedStatus === "dueSoon") return dueSoon;
-        } else {
-          // Teacher mode
-          const stats = getTaskSubmissionStats(task.id);
-          const overdue = stats.submitted < stats.total && isOverdue(task.dueDate, task.dueTime);
-          const isAllDone = stats.submitted === stats.total && stats.total > 0;
+        if (selectedStatus === "pending") return !isDone;
+        if (selectedStatus === "submitted") return isDone;
+        if (selectedStatus === "overdue") return overdue;
+        if (selectedStatus === "dueSoon") return dueSoon;
+      } else {
+        // Teacher mode
+        const stats = getTaskSubmissionStats(task.id);
+        const overdue = stats.submitted < stats.total && isOverdue(task.dueDate, task.dueTime);
+        const isAllDone = stats.submitted === stats.total && stats.total > 0;
 
-          if (selectedStatus === "pending") return !isAllDone;
-          if (selectedStatus === "submitted") return isAllDone;
-          if (selectedStatus === "overdue") return overdue;
-          if (selectedStatus === "dueSoon") return isDueSoon(task.dueDate);
-        }
+        if (selectedStatus === "pending") return !isAllDone;
+        if (selectedStatus === "submitted") return isAllDone;
+        if (selectedStatus === "overdue") return overdue;
+        if (selectedStatus === "dueSoon") return isDueSoon(task.dueDate);
+      }
 
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === "dueAsc") {
-          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        }
-        if (sortBy === "dueDesc") {
-          return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
-        }
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-  }, [
-    tasks,
-    searchQuery,
-    selectedSubject,
-    selectedStatus,
-    sortBy,
-    role,
-    currentStudent,
-    getStudentSubmission,
-    getTaskSubmissionStats,
-  ]);
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "dueAsc") {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      if (sortBy === "dueDesc") {
+        return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fade-in">
@@ -111,27 +104,29 @@ export default function TasksPage() {
               <BookOpen className="w-4 h-4" />
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              {role === "student" ? "รายการงานของฉัน" : "ระบบจัดการงานทั้งหมด"}
+              {role === "student" ? `รายการงานห้อง ${currentClassLabel}` : `จัดการงานห้อง ${currentClassLabel}`}
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
             {role === "student" && currentStudent
-              ? `ติดตามและส่งงานสำหรับ เลขที่ ${currentStudent.seatNumber} ${currentStudent.name}`
-              : "จัดการงานที่สั่ง เพิ่ม/แก้ไข/ลบ และตรวจสอบสถานะการส่งงาน"}
+              ? `ติดตามงานค้างสำหรับ เลขที่ ${currentStudent.seatNumber} ${currentStudent.name}`
+              : `งานทั้งหมดที่อาจารย์สั่งเข้ามาในห้อง ${currentClassLabel}`}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setTaskToEdit(null);
-              setIsTaskModalOpen(true);
-            }}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 transition-all btn-press"
-          >
-            <Plus className="w-4 h-4" />
-            <span>สั่งงานใหม่ / เพิ่มงาน</span>
-          </button>
+          {role === "teacher" && (
+            <button
+              onClick={() => {
+                setTaskToEdit(null);
+                setIsTaskModalOpen(true);
+              }}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 transition-all btn-press"
+            >
+              <Plus className="w-4 h-4" />
+              <span>สั่งงานใหม่ให้ห้องนี้</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -236,7 +231,7 @@ export default function TasksPage() {
             ไม่พบงานที่ตรงกับเงื่อนไขการค้นหา
           </h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-            ลองปรับเปลี่ยนคำค้นหา หรือเลือกตัวกรองสถานะอื่น หรือคลิกปุ่มด้านล่างเพื่อเพิ่มงานใหม่
+            ลองปรับเปลี่ยนคำค้นหา หรือเลือกตัวกรองสถานะอื่น
           </p>
           <button
             onClick={() => {

@@ -2,18 +2,12 @@
 
 import React, { useMemo } from "react";
 import { useTaskTracker } from "@/lib/storage";
+import { EmptyClassroom } from "@/components/shared/EmptyClassroom";
 import {
   BarChart3,
   Award,
-  TrendingUp,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
   BookOpen,
   Sparkles,
-  Users,
-  Flame,
-  Star,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -22,11 +16,19 @@ export default function StatisticsPage() {
     tasks,
     students,
     activeStudents,
+    currentClassLabel,
+    hasStudents,
     subjects,
     getStudentStats,
     getStudentSubmission,
     settings,
+    role,
   } = useTaskTracker();
+
+  // If no students in room
+  if (!hasStudents && role === "student") {
+    return <EmptyClassroom />;
+  }
 
   // Class completion stats
   const classStats = useMemo(() => {
@@ -78,7 +80,7 @@ export default function StatisticsPage() {
     });
   }, [subjects, tasks, activeStudents, getStudentSubmission]);
 
-  // Student Leaderboard (ranked by completion percentage)
+  // Student Leaderboard
   const rankedStudents = useMemo(() => {
     return activeStudents
       .map((student) => {
@@ -103,11 +105,11 @@ export default function StatisticsPage() {
             สถิติและความคืบหน้าการส่งงาน
           </h1>
           <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
-            ห้อง {settings.gradeLevel}/{settings.roomNumber}
+            ห้อง {currentClassLabel}
           </span>
         </div>
         <p className="text-xs sm:text-sm text-slate-500">
-          ภาพรวมความสำเร็จและอัตราการส่งงานของห้อง {settings.gradeLevel}/{settings.roomNumber} {settings.schoolName}
+          ภาพรวมความสำเร็จและอัตราการส่งงานของห้อง {currentClassLabel} {settings.schoolName}
         </p>
       </div>
 
@@ -116,7 +118,7 @@ export default function StatisticsPage() {
         <div className="space-y-2 text-center md:text-left">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 border border-white/20">
             <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-            <span>อัตราความสำเร็จรวมทั้งห้อง</span>
+            <span>อัตราความสำเร็จรวมห้อง {currentClassLabel}</span>
           </span>
           <h2 className="text-2xl sm:text-3xl font-extrabold">
             ส่งงานแล้ว {classStats.completionRate}%
@@ -168,7 +170,7 @@ export default function StatisticsPage() {
               <BookOpen className="w-4 h-4" />
             </div>
             <h3 className="text-base font-bold text-slate-800">
-              สถิติแยกตามรายวิชา
+              สถิติแยกตามรายวิชา ({currentClassLabel})
             </h3>
           </div>
           <span className="text-xs text-slate-500 font-medium">
@@ -212,7 +214,6 @@ export default function StatisticsPage() {
                 </div>
               </div>
 
-              {/* Progress bar */}
               <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-500 rounded-full ${
@@ -231,81 +232,83 @@ export default function StatisticsPage() {
       </div>
 
       {/* Top Students / Star Leaderboard */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-subtle space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Award className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-800">
-                อันดับความรับผิดชอบ (Star Students)
-              </h3>
-              <p className="text-xs text-slate-500">
-                นักเรียนที่มีอัตราการส่งงานสูงสุดในห้อง ม.4/10
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/students"
-            className="text-xs font-semibold text-blue-600 hover:underline"
-          >
-            ดูรายชื่อทั้งหมด
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {rankedStudents.slice(0, 9).map((student, rankIdx) => {
-            const isTop3 = rankIdx < 3;
-            return (
-              <div
-                key={student.id}
-                className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
-                  isTop3
-                    ? "bg-gradient-to-r from-amber-50/70 to-yellow-50/40 border-amber-200 shadow-xs"
-                    : "bg-slate-50/70 border-slate-200/70"
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black ${
-                      rankIdx === 0
-                        ? "bg-amber-400 text-slate-950 shadow-sm"
-                        : rankIdx === 1
-                        ? "bg-slate-300 text-slate-800"
-                        : rankIdx === 2
-                        ? "bg-amber-700 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    {rankIdx + 1}
-                  </div>
-                  <div>
-                    <div className="text-xs sm:text-sm font-bold text-slate-800">
-                      {student.name}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      เลขที่ {student.seatNumber} • ส่งแล้ว {student.stats.submitted}/{student.stats.total} งาน
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span
-                    className={`text-xs font-extrabold px-2 py-0.5 rounded-lg ${
-                      student.stats.percentage === 100
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-blue-100 text-blue-800"
-                    }`}
-                  >
-                    {student.stats.percentage}%
-                  </span>
-                </div>
+      {rankedStudents.length > 0 && (
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-subtle space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Award className="w-4 h-4" />
               </div>
-            );
-          })}
+              <div>
+                <h3 className="text-base font-bold text-slate-800">
+                  อันดับความรับผิดชอบ (Star Students ห้อง {currentClassLabel})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  นักเรียนที่มีอัตราการส่งงานสูงสุดในห้อง {currentClassLabel}
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/students"
+              className="text-xs font-semibold text-blue-600 hover:underline"
+            >
+              ดูรายชื่อทั้งหมด
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {rankedStudents.slice(0, 9).map((student, rankIdx) => {
+              const isTop3 = rankIdx < 3;
+              return (
+                <div
+                  key={student.id}
+                  className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
+                    isTop3
+                      ? "bg-gradient-to-r from-amber-50/70 to-yellow-50/40 border-amber-200 shadow-xs"
+                      : "bg-slate-50/70 border-slate-200/70"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black ${
+                        rankIdx === 0
+                          ? "bg-amber-400 text-slate-950 shadow-sm"
+                          : rankIdx === 1
+                          ? "bg-slate-300 text-slate-800"
+                          : rankIdx === 2
+                          ? "bg-amber-700 text-white"
+                          : "bg-slate-200 text-slate-600"
+                      }`}
+                    >
+                      {rankIdx + 1}
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-sm font-bold text-slate-800">
+                        {student.name}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        เลขที่ {student.seatNumber} • ส่งแล้ว {student.stats.submitted}/{student.stats.total} งาน
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span
+                      className={`text-xs font-extrabold px-2 py-0.5 rounded-lg ${
+                        student.stats.percentage === 100
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {student.stats.percentage}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

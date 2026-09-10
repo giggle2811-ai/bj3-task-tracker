@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Task, TaskPriority, TaskType } from "@/types";
 import { useTaskTracker } from "@/lib/storage";
-import { X, Calendar, Clock, BookOpen, AlertCircle, Link2, Plus } from "lucide-react";
+import { getClassLabel, getAllClasses } from "@/lib/schoolStructure";
+import { X, Calendar, Clock, BookOpen, AlertCircle, Link2, Plus, School } from "lucide-react";
 
 interface TaskFormModalProps {
   taskToEdit?: Task | null;
@@ -14,9 +15,19 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   taskToEdit,
   onClose,
 }) => {
-  const { subjects, addTask, updateTask } = useTaskTracker();
+  const {
+    subjects,
+    addTask,
+    updateTask,
+    selectedClassId,
+    teacherProfile,
+    role,
+  } = useTaskTracker();
 
   const [title, setTitle] = useState(taskToEdit?.title || "");
+  const [targetClassId, setTargetClassId] = useState(
+    taskToEdit?.classId || selectedClassId || "m4-10"
+  );
   const [subjectId, setSubjectId] = useState(
     taskToEdit?.subjectId || (subjects.length > 0 ? subjects[0].id : "")
   );
@@ -31,6 +42,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const [submissionLink, setSubmissionLink] = useState(taskToEdit?.submissionLink || "");
 
   const [error, setError] = useState("");
+  const allClasses = getAllClasses();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +61,11 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
     if (taskToEdit) {
       updateTask({
         ...taskToEdit,
+        classId: targetClassId,
         title: title.trim(),
         subjectId,
         subjectName,
+        teacherName: teacherProfile?.name || "ครูผู้สอน",
         type,
         dueDate,
         dueTime: dueTime.trim() || undefined,
@@ -60,17 +74,22 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
         submissionLink: submissionLink.trim() || undefined,
       });
     } else {
-      addTask({
-        title: title.trim(),
-        subjectId,
-        subjectName,
-        type,
-        dueDate,
-        dueTime: dueTime.trim() || undefined,
-        priority,
-        description: description.trim(),
-        submissionLink: submissionLink.trim() || undefined,
-      });
+      addTask(
+        {
+          classId: targetClassId,
+          title: title.trim(),
+          subjectId,
+          subjectName,
+          teacherName: teacherProfile?.name || "ครูผู้สอน",
+          type,
+          dueDate,
+          dueTime: dueTime.trim() || undefined,
+          priority,
+          description: description.trim(),
+          submissionLink: submissionLink.trim() || undefined,
+        },
+        targetClassId
+      );
     }
 
     onClose();
@@ -86,7 +105,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
               <BookOpen className="w-4 h-4" />
             </div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900">
-              {taskToEdit ? "แก้ไขงาน" : "สั่งงานใหม่ (เพิ่มงาน)"}
+              {taskToEdit ? "แก้ไขงาน" : "สั่งงานใหม่ / เพิ่มงาน"}
             </h2>
           </div>
           <button
@@ -105,6 +124,34 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
               <span>{error}</span>
             </div>
           )}
+
+          {/* Target Classroom selection */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+              <School className="w-3.5 h-3.5 text-blue-600" />
+              <span>สั่งงานให้ห้องเรียน:</span> <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={targetClassId}
+              onChange={(e) => setTargetClassId(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white font-bold text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            >
+              <optgroup label="ห้องที่ท่านสอน">
+                {(teacherProfile?.teachingClasses || ["m4-10"]).map((cid) => (
+                  <option key={cid} value={cid}>
+                    ห้อง {getClassLabel(cid)}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="ห้องเรียนทั้งหมดในโรงเรียน">
+                {allClasses.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    ห้อง {item.label}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
 
           {/* Title */}
           <div>
@@ -168,29 +215,25 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 วันกำหนดส่ง <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  required
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-              </div>
+              <input
+                type="date"
+                required
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 เวลาส่ง (ไม่บังคับ)
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-              </div>
+              <input
+                type="time"
+                value={dueTime}
+                onChange={(e) => setDueTime(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
             </div>
           </div>
 
@@ -201,9 +244,9 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: "low", label: "ทั่วไป", color: "hover:border-slate-400" },
-                { id: "medium", label: "ปานกลาง", color: "hover:border-blue-400" },
-                { id: "urgent", label: "ด่วนมาก 🔥", color: "hover:border-rose-400" },
+                { id: "low", label: "ทั่วไป" },
+                { id: "medium", label: "ปานกลาง" },
+                { id: "urgent", label: "ด่วนมาก 🔥" },
               ].map((p) => (
                 <button
                   key={p.id}

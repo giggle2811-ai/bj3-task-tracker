@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useTaskTracker } from "@/lib/storage";
 import { Task } from "@/types";
+import { EmptyClassroom } from "@/components/shared/EmptyClassroom";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -10,14 +11,11 @@ import {
   Plus,
   Clock,
   CheckCircle2,
-  Circle,
-  AlertCircle,
   Sparkles,
 } from "lucide-react";
 import {
   formatThaiDate,
   getDaysRemainingText,
-  isOverdue,
 } from "@/lib/utils";
 import { TaskFormModal } from "@/components/tasks/TaskFormModal";
 import { TaskQuickCheckModal } from "@/components/tasks/TaskQuickCheckModal";
@@ -35,6 +33,8 @@ export default function CalendarPage() {
     subjects,
     role,
     currentStudent,
+    currentClassLabel,
+    hasStudents,
     getStudentSubmission,
     toggleSubmission,
     getTaskSubmissionStats,
@@ -46,6 +46,11 @@ export default function CalendarPage() {
   );
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [selectedTaskForCheck, setSelectedTaskForCheck] = useState<Task | null>(null);
+
+  // If no students in room
+  if (!hasStudents && role === "student") {
+    return <EmptyClassroom />;
+  }
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -73,7 +78,7 @@ export default function CalendarPage() {
       days.push({ dayNumber: d, dateStr, isCurrentMonth: true });
     }
 
-    // Days from next month to complete 35 or 42 grid cells
+    // Days from next month
     const remainingCells = 42 - days.length;
     for (let d = 1; d <= remainingCells; d++) {
       const nextMonth = month === 11 ? 0 : month + 1;
@@ -123,11 +128,11 @@ export default function CalendarPage() {
               <CalendarIcon className="w-4 h-4" />
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              ปฏิทินกำหนดส่งงาน
+              ปฏิทินกำหนดส่งงาน (ห้อง {currentClassLabel})
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
-            ดูภาพรวมกำหนดส่งงานในแต่ละวัน และวางแผนการเคลียร์งานล่วงหน้า
+            ดูภาพรวมกำหนดส่งงานในแต่ละวันของห้อง {currentClassLabel}
           </p>
         </div>
 
@@ -138,13 +143,15 @@ export default function CalendarPage() {
           >
             วันนี้
           </button>
-          <button
-            onClick={() => setIsTaskModalOpen(true)}
-            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>เพิ่มงาน</span>
-          </button>
+          {role === "teacher" && (
+            <button
+              onClick={() => setIsTaskModalOpen(true)}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>สั่งงานใหม่</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -206,7 +213,6 @@ export default function CalendarPage() {
                     : "border-transparent text-slate-300 bg-slate-50/50"
                 }`}
               >
-                {/* Day number */}
                 <div className="flex items-center justify-between">
                   <span
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -229,27 +235,22 @@ export default function CalendarPage() {
                   )}
                 </div>
 
-                {/* Task indicators */}
                 <div className="mt-1 space-y-1 overflow-hidden">
-                  {dayTasks.slice(0, 2).map((t) => {
-                    const sub = subjects.find((s) => s.id === t.subjectId);
-                    return (
-                      <div
-                        key={t.id}
-                        className="text-[10px] font-medium truncate px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 hidden sm:block"
-                        title={t.title}
-                      >
-                        {t.title}
-                      </div>
-                    );
-                  })}
+                  {dayTasks.slice(0, 2).map((t) => (
+                    <div
+                      key={t.id}
+                      className="text-[10px] font-medium truncate px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 hidden sm:block"
+                      title={t.title}
+                    >
+                      {t.title}
+                    </div>
+                  ))}
                   {dayTasks.length > 2 && (
                     <div className="text-[9px] text-slate-400 font-bold px-1 hidden sm:block">
                       +{dayTasks.length - 2} อื่นๆ
                     </div>
                   )}
 
-                  {/* Mobile dot indicator */}
                   {dayTasks.length > 0 && (
                     <div className="flex items-center gap-1 justify-center sm:hidden">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />

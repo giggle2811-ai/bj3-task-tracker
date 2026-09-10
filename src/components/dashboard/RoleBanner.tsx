@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Award,
   ChevronRight,
+  School,
 } from "lucide-react";
 import Link from "next/link";
 import { TaskFormModal } from "../tasks/TaskFormModal";
@@ -19,7 +20,8 @@ export const RoleBanner: React.FC = () => {
   const {
     settings,
     role,
-    setRole,
+    teacherProfile,
+    currentClassLabel,
     currentStudent,
     getStudentStats,
     tasks,
@@ -57,10 +59,10 @@ export const RoleBanner: React.FC = () => {
                 <span>{settings.schoolName}</span>
               </span>
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-400 text-slate-950 shadow-sm">
-                ชั้น {settings.gradeLevel}/{settings.roomNumber}
+                ห้อง {currentClassLabel}
               </span>
               <span className="text-xs text-blue-100 font-medium">
-                ภาคเรียนที่ {settings.semester}/{settings.academicYear}
+                ปีการศึกษา {settings.academicYear} (เทอม {settings.semester})
               </span>
             </div>
 
@@ -80,10 +82,10 @@ export const RoleBanner: React.FC = () => {
             ) : (
               <div>
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight">
-                  โหมดจัดการงาน • คุณครูและหัวหน้าห้อง 👨‍🏫
+                  แดชบอร์ดอาจารย์ผู้สอน • {teacherProfile?.name || "ครูผู้สอน"} 👨‍🏫
                 </h1>
                 <p className="text-xs sm:text-sm text-blue-100 mt-1 max-w-xl leading-relaxed">
-                  ติดตามการส่งงานของนักเรียน ม.{settings.roomNumber ? `${settings.gradeLevel}/${settings.roomNumber}` : settings.gradeLevel} ทั้งหมด {activeStudents.length} คน • อัตราการส่งงานเฉลี่ยทั้งห้อง {classAvgPercentage}%
+                  ติดตามการส่งงานของนักเรียนห้อง {currentClassLabel} ทั้งหมด {activeStudents.length} คน • อัตราการส่งงานเฉลี่ย {classAvgPercentage}%
                 </p>
               </div>
             )}
@@ -101,11 +103,11 @@ export const RoleBanner: React.FC = () => {
                   <span>สั่งงานใหม่</span>
                 </button>
                 <Link
-                  href="/checker"
+                  href="/teacher"
                   className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 border border-white/20 transition-all"
                 >
-                  <UserCheck className="w-4 h-4" />
-                  <span>ตารางเช็คงาน</span>
+                  <School className="w-4 h-4" />
+                  <span>จัดการห้อง/รายชื่อ</span>
                 </Link>
               </>
             ) : (
@@ -118,11 +120,11 @@ export const RoleBanner: React.FC = () => {
                   <ChevronRight className="w-4 h-4" />
                 </Link>
                 <Link
-                  href="/calendar"
+                  href="/login"
                   className="px-4 py-2.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 border border-white/20 transition-all"
                 >
-                  <Calendar className="w-4 h-4" />
-                  <span>ปฏิทินส่งงาน</span>
+                  <School className="w-4 h-4" />
+                  <span>เปลี่ยนห้องเรียน</span>
                 </Link>
               </>
             )}

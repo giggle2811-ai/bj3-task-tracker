@@ -1,4 +1,12 @@
-import { Student, Subject, Task, SubmissionMap, ClassSettings } from "../types";
+import { Student, Subject, Task, SubmissionMap, ClassSettings, TeacherProfile } from "../types";
+
+export const DEFAULT_TEACHER_PROFILE: TeacherProfile = {
+  id: "teacher-default",
+  name: "ครูสมหมาย ใจดี",
+  email: "sommai@bj3.ac.th",
+  subject: "กลุ่มสาระการเรียนรู้คณิตศาสตร์",
+  teachingClasses: ["m4-10", "m4-5"],
+};
 
 export const DEFAULT_CLASS_SETTINGS: ClassSettings = {
   schoolName: "โรงเรียนบรรหารแจ่มใสวิทยา ๓",
@@ -7,10 +15,10 @@ export const DEFAULT_CLASS_SETTINGS: ClassSettings = {
   roomNumber: "10",
   academicYear: "2567",
   semester: "1",
-  announcement: "ยินดีต้อนรับสู่ระบบติดตามงาน ม.4/10 บ.จ. ๓ ติดตามงานค้าง ส่งงานตรงเวลา ทุกคะแนนมีความหมาย! 🚀",
+  announcement: "ยินดีต้อนรับสู่ระบบติดตามงาน บ.จ. ๓ ติดตามงานค้าง ส่งงานตรงเวลา ทุกคะแนนมีความหมาย! 🚀",
 };
 
-export const DEFAULT_STUDENTS: Student[] = [
+export const DEFAULT_STUDENTS_M410: Student[] = [
   { id: "s-1", seatNumber: 1, name: "จิรายุทธ แซ่ตัน", status: "active", gender: "male" },
   { id: "s-2", seatNumber: 2, name: "ธีรภัทร เยาวโรจน์", status: "active", gender: "male" },
   { id: "s-3", seatNumber: 3, name: "รติพงษ์ เจตนเสน", status: "active", gender: "male" },
@@ -136,14 +144,16 @@ function getDateOffset(daysOffset: number): string {
   return `${year}-${month}-${day}`;
 }
 
-export const DEFAULT_TASKS: Task[] = [
+export const DEFAULT_TASKS_M410: Task[] = [
   {
     id: "task-1",
+    classId: "m4-10",
     title: "แบบฝึกหัด 2.1 เรื่อง ฟังก์ชันกำลังสองและกราฟพาราโบลา",
     subjectId: "sub-1",
     subjectName: "คณิตศาสตร์พื้นฐาน",
+    teacherName: "ครูสมหมาย",
     description: "ทำในสมุดแบบฝึกหัด หน้า 45-47 ข้อ 1 ถึง 10 แสดงวิธีทำและวาดกราฟให้เรียบร้อย ส่งที่โต๊ะครูสมหมาย ห้องพักครูคณิตศาสตร์",
-    dueDate: getDateOffset(1), // Tomorrow
+    dueDate: getDateOffset(1),
     dueTime: "16:30",
     priority: "high",
     type: "homework",
@@ -151,11 +161,13 @@ export const DEFAULT_TASKS: Task[] = [
   },
   {
     id: "task-2",
+    classId: "m4-10",
     title: "รายงานวิเคราะห์วรรณคดี เรื่อง มัทนะพาธา",
     subjectId: "sub-2",
     subjectName: "ภาษาไทย",
+    teacherName: "ครูวิภา",
     description: "รายงานรูปเล่มความยาว 3-5 หน้า สรุปใจความสำคัญ วิเคราะห์คุณค่าทางวรรณศิลป์ พร้อมข้อคิดที่ได้ นำส่งเป็นเล่มรายงาน",
-    dueDate: getDateOffset(3), // 3 days ahead
+    dueDate: getDateOffset(3),
     dueTime: "15:00",
     priority: "medium",
     type: "report",
@@ -163,11 +175,13 @@ export const DEFAULT_TASKS: Task[] = [
   },
   {
     id: "task-3",
+    classId: "m4-10",
     title: "Worksheet Unit 3: Present Perfect vs Past Simple",
     subjectId: "sub-3",
     subjectName: "ภาษาอังกฤษพื้นฐาน",
+    teacherName: "ครูกาญจนา",
     description: "Complete all exercises on page 24-26 in the workbook and check vocabulary on Quizlet before submitting.",
-    dueDate: getDateOffset(-1), // Yesterday (Overdue!)
+    dueDate: getDateOffset(-1),
     dueTime: "23:59",
     priority: "urgent",
     type: "worksheet",
@@ -175,11 +189,13 @@ export const DEFAULT_TASKS: Task[] = [
   },
   {
     id: "task-4",
+    classId: "m4-10",
     title: "ใบแล็บการทดลองที่ 3 การเคลื่อนที่แนวตรงและความเร่ง",
     subjectId: "sub-4",
     subjectName: "ฟิสิกส์ 1",
+    teacherName: "ครูปรีชา",
     description: "บันทึกผลการทดลองแถบกระดาษเคาะสัญญาณเวลา พร้อมคำนวณหาความเร็วเฉลี่ยและความเร่ง ส่งรายบุคคล",
-    dueDate: getDateOffset(5), // 5 days ahead
+    dueDate: getDateOffset(5),
     dueTime: "16:00",
     priority: "high",
     type: "worksheet",
@@ -187,11 +203,13 @@ export const DEFAULT_TASKS: Task[] = [
   },
   {
     id: "task-5",
+    classId: "m4-10",
     title: "โครงงานพัฒนาโปรแกรม Python เพื่อแก้ปัญหาในโรงเรียน",
     subjectId: "sub-7",
     subjectName: "วิทยาการคำนวณ",
+    teacherName: "ครูชัยวัฒน์",
     description: "เขียนโค้ดและส่งไฟล์ .py หรือ GitHub repository พร้อมเอกสารประกอบ 2 แผ่น แนบลิงก์ส่งงานในระบบ",
-    dueDate: getDateOffset(7), // Next week
+    dueDate: getDateOffset(7),
     dueTime: "23:59",
     priority: "medium",
     type: "project",
@@ -200,11 +218,13 @@ export const DEFAULT_TASKS: Task[] = [
   },
   {
     id: "task-6",
+    classId: "m4-10",
     title: "ผังมโนทัศน์ (Mind Map) กฎหมายแพ่งและพาณิชย์เบื้องต้น",
     subjectId: "sub-6",
     subjectName: "สังคมศึกษา",
+    teacherName: "ครูวีระ",
     description: "วาดลงในกระดาษ 100 ปอนด์ ขนาด A4 ระบายสีตกแต่งให้สวยงาม สรุปเรื่องนิติกรรมสัญญาและทรัพย์สิน",
-    dueDate: getDateOffset(-3), // Past overdue
+    dueDate: getDateOffset(-3),
     dueTime: "12:00",
     priority: "urgent",
     type: "homework",
@@ -212,7 +232,6 @@ export const DEFAULT_TASKS: Task[] = [
   },
 ];
 
-// Pre-fill realistic submission data: some students turned in, some didn't
 export function createInitialSubmissions(tasks: Task[], students: Student[]): SubmissionMap {
   const map: SubmissionMap = {};
 
@@ -221,23 +240,21 @@ export function createInitialSubmissions(tasks: Task[], students: Student[]): Su
     students.forEach((student) => {
       if (student.status === "resigned") return;
 
-      // Realistic pseudo-random distribution based on student seat and task
-      // e.g. task 1 is almost done, task 3 has a few missing, task 6 has some overdue missing
       const seed = (student.seatNumber * 7 + task.id.charCodeAt(5)) % 10;
       let isSubmitted = false;
 
       if (task.id === "task-1") {
-        isSubmitted = seed > 2; // ~70% done
+        isSubmitted = seed > 2;
       } else if (task.id === "task-2") {
-        isSubmitted = seed > 5; // ~40% done
+        isSubmitted = seed > 5;
       } else if (task.id === "task-3") {
-        isSubmitted = seed > 3; // ~60% done (leaving some overdue)
+        isSubmitted = seed > 3;
       } else if (task.id === "task-4") {
-        isSubmitted = seed > 6; // ~30% done
+        isSubmitted = seed > 6;
       } else if (task.id === "task-5") {
-        isSubmitted = seed > 7; // ~20% done
+        isSubmitted = seed > 7;
       } else if (task.id === "task-6") {
-        isSubmitted = seed > 4; // ~50% done
+        isSubmitted = seed > 4;
       }
 
       map[task.id][student.id] = {
