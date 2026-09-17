@@ -18,6 +18,7 @@ export const StatCards: React.FC = () => {
   const {
     role,
     currentStudent,
+    currentClassLabel,
     tasks,
     getStudentSubmission,
     activeStudents,
@@ -101,9 +102,13 @@ export const StatCards: React.FC = () => {
         </div>
         <div className="mt-2 text-[11px] text-amber-600/90 font-medium">
           {role === "student"
-            ? studentMetrics.pending > 0
+            ? tasks.length === 0
+              ? "ยังไม่มีงานที่มอบหมาย"
+              : studentMetrics.pending > 0
               ? "อย่าลืมรีบทำส่งนะ!"
               : "เคลียร์หมดแล้ว เยี่ยมมาก!"
+            : tasks.length === 0
+            ? "ยังไม่มีงานที่สั่งในห้องนี้"
             : `ติดตามนักเรียน ${activeStudents.length} คน`}
         </div>
       </div>
@@ -155,12 +160,14 @@ export const StatCards: React.FC = () => {
           <Award className="w-3 h-3 text-emerald-600" />
           <span>
             {role === "student"
-              ? studentMetrics.percentage >= 80
+              ? tasks.length === 0
+                ? "ยังไม่มีงานในระบบ"
+                : studentMetrics.percentage >= 80
                 ? "เก่งมาก! รักษามาตรฐานไว้นะ"
                 : studentMetrics.percentage >= 50
                 ? "ทำได้ดี สู้ต่ออีกนิด!"
                 : "มาเร่งสปีดเคลียร์งานกัน"
-              : "ภาพรวมสถิติทั้งห้อง ม.4/10"}
+              : `ภาพรวมสถิติห้อง ${currentClassLabel}`}
           </span>
         </div>
       </div>

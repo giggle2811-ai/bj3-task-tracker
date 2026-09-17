@@ -101,6 +101,8 @@ interface TaskTrackerContextType {
 
 const TaskTrackerContext = createContext<TaskTrackerContextType | undefined>(undefined);
 
+const MOCK_TASK_IDS = new Set(["task-1", "task-2", "task-3", "task-4", "task-5", "task-6"]);
+
 export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -113,11 +115,11 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [selectedClassId, setSelectedClassId] = useState<string>("m4-10");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>("s-1");
 
-  // Classes Store
+  // Classes Store (default tasks: empty array)
   const [classesStore, setClassesStore] = useState<ClassesStore>({
     "m4-10": {
       students: DEFAULT_STUDENTS_M410,
-      tasks: DEFAULT_TASKS_M410,
+      tasks: [],
     },
   });
 
@@ -141,17 +143,25 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       let initialClasses: ClassesStore = {
         "m4-10": {
           students: DEFAULT_STUDENTS_M410,
-          tasks: DEFAULT_TASKS_M410,
+          tasks: [],
         },
       };
       if (savedClasses) {
         try {
           const parsed = JSON.parse(savedClasses);
-          // Ensure m4-10 exists with data if empty
+          // Clean out any legacy mock tasks across all classes
+          Object.keys(parsed).forEach((classKey) => {
+            if (parsed[classKey] && Array.isArray(parsed[classKey].tasks)) {
+              parsed[classKey].tasks = parsed[classKey].tasks.filter(
+                (t: Task) => !MOCK_TASK_IDS.has(t.id)
+              );
+            }
+          });
+          // Ensure m4-10 exists with default student roster if empty
           if (!parsed["m4-10"] || !parsed["m4-10"].students || parsed["m4-10"].students.length === 0) {
             parsed["m4-10"] = {
               students: DEFAULT_STUDENTS_M410,
-              tasks: DEFAULT_TASKS_M410,
+              tasks: parsed["m4-10"]?.tasks || [],
             };
           }
           initialClasses = parsed;
@@ -178,14 +188,17 @@ export const TaskTrackerProvider: React.FC<{ children: React.ReactNode }> = ({ c
       // 5. Saved Submissions
       const savedSubs = localStorage.getItem(STORAGE_KEYS.SUBMISSIONS);
       if (savedSubs) {
-        setSubmissions(JSON.parse(savedSubs));
+        try {
+          const parsedSubs = JSON.parse(savedSubs);
+          MOCK_TASK_IDS.forEach((id) => delete parsedSubs[id]);
+          setSubmissions(parsedSubs);
+          localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(parsedSubs));
+        } catch {
+          setSubmissions({});
+        }
       } else {
-        const initialSubs = createInitialSubmissions(
-          initialClasses["m4-10"].tasks,
-          initialClasses["m4-10"].students
-        );
-        setSubmissions(initialSubs);
-        localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify(initialSubs));
+        setSubmissions({});
+        localStorage.setItem(STORAGE_KEYS.SUBMISSIONS, JSON.stringify({}));
       }
 
       // 6. Settings

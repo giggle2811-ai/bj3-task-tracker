@@ -45,7 +45,7 @@ export const EmptyClassroom: React.FC = () => {
       </div>
 
       <div className="mt-8 pt-6 border-t border-slate-100 text-xs text-slate-400">
-        💡 หากท่านต้องการทดลองดูห้องที่มีข้อมูลสมบูรณ์ สามารถสลับไปที่ <strong>ห้อง ม.4/10</strong> ได้ตลอดเวลา
+        💡 เมื่อคุณครูประจำวิชาหรือครูที่ปรึกษาเข้ามาเพิ่มรายชื่อและสั่งงาน ข้อมูลจะปรากฏขึ้นโดยอัตโนมัติ
       </div>
     </div>
   );

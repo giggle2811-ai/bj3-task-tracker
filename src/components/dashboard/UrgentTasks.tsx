@@ -77,7 +77,17 @@ export const UrgentTasks: React.FC = () => {
           </Link>
         </div>
 
-        {urgentTasks.length === 0 ? (
+        {tasks.length === 0 ? (
+          <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-700">ยังไม่มีงานที่มอบหมายในขณะนี้</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {role === "teacher"
+                ? "คุณครูสามารถกดปุ่มสั่งงานเพื่อมอบหมายงานใหม่ได้"
+                : "เมื่อคุณครูสั่งงาน รายการงานด่วนจะปรากฏที่นี่"}
+            </p>
+          </div>
+        ) : urgentTasks.length === 0 ? (
           <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
             <Sparkles className="w-8 h-8 text-amber-400 mx-auto mb-2 animate-bounce" />
             <p className="text-sm font-semibold text-slate-700">ไม่มีงานด่วนค้างส่งในตอนนี้ 🎉</p>

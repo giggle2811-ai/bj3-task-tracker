@@ -5,9 +5,9 @@ import { Navbar } from "@/components/shared/Navbar";
 import { BottomNav } from "@/components/shared/BottomNav";
 
 export const metadata: Metadata = {
-  title: "4/10 Task Tracker | ระบบติดตามงาน บ.จ. ๓",
+  title: "Task tracker",
   description:
-    "เว็บแอปพลิเคชันสำหรับติดตามและตรวจสอบการส่งงานค้างของนักเรียนโรงเรียนบรรหารแจ่มใสวิทยา ๓ (ม.4/10) ใช้งานง่าย รองรับมือถือ 100%",
+    "เว็บแอปพลิเคชันสำหรับติดตามและตรวจสอบการส่งงานค้าง โรงเรียนบรรหารแจ่มใสวิทยา ๓ ใช้งานง่าย รองรับมือถือ 100%",
   icons: {
     icon: "/favicon.ico",
   },

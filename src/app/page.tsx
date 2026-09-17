@@ -14,9 +14,9 @@ export default function HomePage() {
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="flex flex-col items-center gap-3">
         <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg animate-pulse shadow-lg shadow-blue-500/30">
-          4/10
+          TT
         </div>
-        <p className="text-sm font-medium text-slate-500">กำลังโหลดระบบติดตามงาน บ.จ. ๓...</p>
+        <p className="text-sm font-medium text-slate-500">กำลังโหลด Task tracker...</p>
       </div>
     </div>
   );

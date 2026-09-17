@@ -224,7 +224,31 @@ export default function TasksPage() {
       </div>
 
       {/* Task Cards Grid */}
-      {filteredTasks.length === 0 ? (
+      {tasks.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-200 shadow-xs">
+          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-800 mb-1">
+            ยังไม่มีงานที่มอบหมายในห้อง {currentClassLabel}
+          </h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+            {role === "teacher"
+              ? "คุณครูสามารถกดปุ่ม \"สั่งงานใหม่ให้ห้องนี้\" ด้านบนเพื่อมอบหมายงานให้นักเรียนได้เลย"
+              : "ยังไม่มีคุณครูสั่งงานในห้องนี้ เมื่อมีการสั่งงานจะปรากฏขึ้นที่นี่"}
+          </p>
+          {role === "teacher" && (
+            <button
+              onClick={() => {
+                setTaskToEdit(null);
+                setIsTaskModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors inline-flex items-center gap-1.5 shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>สั่งงานแรกให้ห้องนี้</span>
+            </button>
+          )}
+        </div>
+      ) : filteredTasks.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-200 shadow-xs">
           <Sparkles className="w-10 h-10 text-amber-400 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-800 mb-1">

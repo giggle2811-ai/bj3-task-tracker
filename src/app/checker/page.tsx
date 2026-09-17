@@ -109,7 +109,7 @@ export default function CheckerPage() {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
-            เลือกงานเพื่อตรวจเช็คการส่งงานของนักเรียน ม.{currentClassLabel} แต่ละคน หรือสร้างข้อความทวงงานส่งเข้า LINE กลุ่ม
+            เลือกงานเพื่อตรวจเช็คการส่งงานของนักเรียนห้อง {currentClassLabel} แต่ละคน หรือสร้างข้อความทวงงานส่งเข้า LINE กลุ่ม
           </p>
         </div>
 
@@ -128,8 +128,14 @@ export default function CheckerPage() {
       {tasks.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-200">
           <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm font-bold text-slate-700">ยังไม่มีงานที่สั่งในห้อง {currentClassLabel}</p>
-          <p className="text-xs text-slate-400 mt-0.5">กรุณาเพิ่มงานก่อนเพื่อเริ่มเช็คการส่งงาน</p>
+          <p className="text-sm font-bold text-slate-700">ยังไม่มีงานที่มอบหมายในห้อง {currentClassLabel}</p>
+          <p className="text-xs text-slate-400 mt-0.5 mb-4">เมื่อคุณครูสั่งงาน จะสามารถเข้ามาเช็คชื่อและบันทึกการส่งงานที่นี่ได้</p>
+          <Link
+            href="/tasks"
+            className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors inline-flex items-center gap-1.5 shadow-xs"
+          >
+            <span>ไปที่หน้ารายการงาน</span>
+          </Link>
         </div>
       ) : (
         <>

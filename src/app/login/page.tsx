@@ -80,7 +80,7 @@ export default function LoginPage() {
           บ.จ.๓
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          ระบบติดตามงาน บ.จ. ๓
+          Task tracker
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
           โรงเรียนบรรหารแจ่มใสวิทยา ๓ • ตรวจสอบงานค้างและบันทึกการส่งงาน

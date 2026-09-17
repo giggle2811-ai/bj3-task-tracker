@@ -88,7 +88,7 @@ export const Navbar: React.FC = () => {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-slate-800 text-base sm:text-lg tracking-tight group-hover:text-blue-600 transition-colors">
-                  Task Tracker
+                  Task tracker
                 </span>
                 <span className="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
                   {currentClassLabel}

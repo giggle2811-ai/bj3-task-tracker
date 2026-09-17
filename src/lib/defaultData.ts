@@ -134,103 +134,7 @@ export const DEFAULT_SUBJECTS: Subject[] = [
   },
 ];
 
-// Helper to format dynamic date offset based on today
-function getDateOffset(daysOffset: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + daysOffset);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-export const DEFAULT_TASKS_M410: Task[] = [
-  {
-    id: "task-1",
-    classId: "m4-10",
-    title: "แบบฝึกหัด 2.1 เรื่อง ฟังก์ชันกำลังสองและกราฟพาราโบลา",
-    subjectId: "sub-1",
-    subjectName: "คณิตศาสตร์พื้นฐาน",
-    teacherName: "ครูสมหมาย",
-    description: "ทำในสมุดแบบฝึกหัด หน้า 45-47 ข้อ 1 ถึง 10 แสดงวิธีทำและวาดกราฟให้เรียบร้อย ส่งที่โต๊ะครูสมหมาย ห้องพักครูคณิตศาสตร์",
-    dueDate: getDateOffset(1),
-    dueTime: "16:30",
-    priority: "high",
-    type: "homework",
-    createdAt: getDateOffset(-2),
-  },
-  {
-    id: "task-2",
-    classId: "m4-10",
-    title: "รายงานวิเคราะห์วรรณคดี เรื่อง มัทนะพาธา",
-    subjectId: "sub-2",
-    subjectName: "ภาษาไทย",
-    teacherName: "ครูวิภา",
-    description: "รายงานรูปเล่มความยาว 3-5 หน้า สรุปใจความสำคัญ วิเคราะห์คุณค่าทางวรรณศิลป์ พร้อมข้อคิดที่ได้ นำส่งเป็นเล่มรายงาน",
-    dueDate: getDateOffset(3),
-    dueTime: "15:00",
-    priority: "medium",
-    type: "report",
-    createdAt: getDateOffset(-4),
-  },
-  {
-    id: "task-3",
-    classId: "m4-10",
-    title: "Worksheet Unit 3: Present Perfect vs Past Simple",
-    subjectId: "sub-3",
-    subjectName: "ภาษาอังกฤษพื้นฐาน",
-    teacherName: "ครูกาญจนา",
-    description: "Complete all exercises on page 24-26 in the workbook and check vocabulary on Quizlet before submitting.",
-    dueDate: getDateOffset(-1),
-    dueTime: "23:59",
-    priority: "urgent",
-    type: "worksheet",
-    createdAt: getDateOffset(-5),
-  },
-  {
-    id: "task-4",
-    classId: "m4-10",
-    title: "ใบแล็บการทดลองที่ 3 การเคลื่อนที่แนวตรงและความเร่ง",
-    subjectId: "sub-4",
-    subjectName: "ฟิสิกส์ 1",
-    teacherName: "ครูปรีชา",
-    description: "บันทึกผลการทดลองแถบกระดาษเคาะสัญญาณเวลา พร้อมคำนวณหาความเร็วเฉลี่ยและความเร่ง ส่งรายบุคคล",
-    dueDate: getDateOffset(5),
-    dueTime: "16:00",
-    priority: "high",
-    type: "worksheet",
-    createdAt: getDateOffset(-1),
-  },
-  {
-    id: "task-5",
-    classId: "m4-10",
-    title: "โครงงานพัฒนาโปรแกรม Python เพื่อแก้ปัญหาในโรงเรียน",
-    subjectId: "sub-7",
-    subjectName: "วิทยาการคำนวณ",
-    teacherName: "ครูชัยวัฒน์",
-    description: "เขียนโค้ดและส่งไฟล์ .py หรือ GitHub repository พร้อมเอกสารประกอบ 2 แผ่น แนบลิงก์ส่งงานในระบบ",
-    dueDate: getDateOffset(7),
-    dueTime: "23:59",
-    priority: "medium",
-    type: "project",
-    createdAt: getDateOffset(-3),
-    submissionLink: "https://classroom.google.com",
-  },
-  {
-    id: "task-6",
-    classId: "m4-10",
-    title: "ผังมโนทัศน์ (Mind Map) กฎหมายแพ่งและพาณิชย์เบื้องต้น",
-    subjectId: "sub-6",
-    subjectName: "สังคมศึกษา",
-    teacherName: "ครูวีระ",
-    description: "วาดลงในกระดาษ 100 ปอนด์ ขนาด A4 ระบายสีตกแต่งให้สวยงาม สรุปเรื่องนิติกรรมสัญญาและทรัพย์สิน",
-    dueDate: getDateOffset(-3),
-    dueTime: "12:00",
-    priority: "urgent",
-    type: "homework",
-    createdAt: getDateOffset(-7),
-  },
-];
+export const DEFAULT_TASKS_M410: Task[] = [];
 
 export function createInitialSubmissions(tasks: Task[], students: Student[]): SubmissionMap {
   const map: SubmissionMap = {};
@@ -239,27 +143,8 @@ export function createInitialSubmissions(tasks: Task[], students: Student[]): Su
     map[task.id] = {};
     students.forEach((student) => {
       if (student.status === "resigned") return;
-
-      const seed = (student.seatNumber * 7 + task.id.charCodeAt(5)) % 10;
-      let isSubmitted = false;
-
-      if (task.id === "task-1") {
-        isSubmitted = seed > 2;
-      } else if (task.id === "task-2") {
-        isSubmitted = seed > 5;
-      } else if (task.id === "task-3") {
-        isSubmitted = seed > 3;
-      } else if (task.id === "task-4") {
-        isSubmitted = seed > 6;
-      } else if (task.id === "task-5") {
-        isSubmitted = seed > 7;
-      } else if (task.id === "task-6") {
-        isSubmitted = seed > 4;
-      }
-
       map[task.id][student.id] = {
-        isSubmitted,
-        submittedAt: isSubmitted ? new Date().toISOString() : undefined,
+        isSubmitted: false,
       };
     });
   });
